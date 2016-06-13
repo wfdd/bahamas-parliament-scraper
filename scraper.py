@@ -1,4 +1,5 @@
 
+import csv
 import datetime as dt
 import functools as ft
 import sqlite3
@@ -76,19 +77,25 @@ def collect_rows(session):
 
 def main():
     with Browser('phantomjs', load_images=False) as session, \
-            sqlite3.connect('data.sqlite') as c:
-        people = scrape_rows(session, tuple(gather_people(session)))
-        c.execute('''\
+            sqlite3.connect('data.sqlite') as cursor, \
+            open('elected-2012.csv') as elected:
+        cursor.execute('''\
 CREATE TABLE IF NOT EXISTS data
 (name, sort_name, family_name, given_name, birth_date, image,
  'group', constituency, island, source, as_of,
  UNIQUE (name, 'group', constituency, island))''')
-        c.executemany('''\
+        cursor.executemany('''\
 INSERT OR REPLACE INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (lambda date: ((*p, date)
                            for p in (scrape_row(session, r)
                                      for r in tuple(collect_rows(session)))
                            ))(dt.date.today().isoformat()))
+        cursor.execute('''\
+CREATE TABLE IF NOT EXISTS elected
+(name, area, 'group', term, UNIQUE (name, area, 'group', term))''')
+        cursor.executemany('''\
+INSERT OR REPLACE INTO elected VALUES (?, ?, ?, ?)''',
+            tuple(csv.reader(elected))[1:])
 
 if __name__ == '__main__':
     main()
