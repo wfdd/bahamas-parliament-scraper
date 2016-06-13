@@ -21,6 +21,9 @@ def extract_birth_date(text):
     try:
         text = next(p.text_content() for p in text
                     if 'born' in p.text_content())
+        # We're arbitrarily limiting it to eight tokens after 'born' so that
+        # we don't accidentally pick up dates other than birth dates
+        text = ' '.join(text[text.find('born'):].split()[:10])
     except StopIteration:
         return
     with urlopen('http://nlp.stanford.edu:8080/sutime/process',
@@ -83,7 +86,7 @@ def main():
 CREATE TABLE IF NOT EXISTS data
 (name, sort_name, family_name, given_name, birth_date, image,
  'group', constituency, island, source, as_of,
- UNIQUE (name, 'group', constituency, island))''')
+ UNIQUE (source))''')
         cursor.executemany('''\
 INSERT OR REPLACE INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (lambda date: ((*p, date)
